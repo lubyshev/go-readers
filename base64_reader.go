@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io"
+	"strings"
 )
 
 type Base64EncodeReader interface {
@@ -47,8 +48,9 @@ func (inst *base64EncodeReader) Read(p []byte) (n int, err error) {
 	// all reads are done
 	if inst.success {
 		// append space if length is less
-		if inst.szRead < inst.Size() {
-			inst.buf = []byte(" ")
+		left := int(inst.Size() - inst.szRead)
+		if left > 0 {
+			inst.buf = []byte(strings.Repeat(" ", left))
 			return inst.Read(p)
 		}
 		return 0, io.EOF

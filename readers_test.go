@@ -8,7 +8,6 @@ import (
 	Readers "github.com/lubyshev/go-readers"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
@@ -52,14 +51,14 @@ func Test_MultipartRequestBody_Request(t *testing.T) {
 					_ = part.Close()
 					return
 				}
-				bt, err := ioutil.ReadAll(part)
+				bt, err := io.ReadAll(part)
 				assert.NoError(t, err)
 				switch part.FormName() {
 				case "meta-1":
 					assert.Equal(t, body1, string(bt))
 				case "meta-2":
 					dec := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(bt))
-					bt, err = ioutil.ReadAll(dec)
+					bt, err = io.ReadAll(dec)
 					assert.NoError(t, err)
 					assert.Equal(t, body2, string(bt))
 				}
@@ -108,7 +107,7 @@ func Test_Base64EncodeReader_MultiReadCloser(t *testing.T) {
 		if i == 1 {
 			rr = base64.NewDecoder(base64.StdEncoding, rr)
 		}
-		r = append(r, ioutil.NopCloser(rr))
+		r = append(r, io.NopCloser(rr))
 		sz += int64(len(s))
 	}
 	mp := Readers.NewBase64EncodeReader(sz, Readers.NewMultiReadCloser(r))
@@ -116,7 +115,7 @@ func Test_Base64EncodeReader_MultiReadCloser(t *testing.T) {
 		err := mp.Close()
 		assert.NoError(t, err)
 	}()
-	bts, err := ioutil.ReadAll(mp)
+	bts, err := io.ReadAll(mp)
 	assert.NoError(t, err)
 	assert.Equal(t, "MTExMTEKMjIyMjIKMzMzMzM=    ", string(bts))
 }
@@ -128,13 +127,13 @@ func genMultipartRequest() Readers.MultipartRequestBody {
 	h.Set("Content-Type", "text/plain; charset=utf8")
 
 	h.Set("Content-Disposition", `form-data; name="meta-1"`)
-	mp.NewPart(h, int64(len(body1)), ioutil.NopCloser(strings.NewReader(body1)))
+	mp.NewPart(h, int64(len(body1)), io.NopCloser(strings.NewReader(body1)))
 
 	h.Set("Content-Disposition", `form-data; name="meta-2"`)
 	h.Set("Content-Transfer-Encoding", "base64")
 	r := Readers.NewBase64EncodeReader(
 		int64(len(body2)),
-		ioutil.NopCloser(strings.NewReader(body2)),
+		io.NopCloser(strings.NewReader(body2)),
 	)
 	mp.NewPart(h, r.Size(), r)
 
@@ -143,7 +142,7 @@ func genMultipartRequest() Readers.MultipartRequestBody {
 
 func Test_ReadDispatcher_ClientClosed_ClientNotExist_ReaderNotClosed(t *testing.T) {
 	var p = make([]byte, 10)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 
 	dsp := Readers.NewReadDispatcher(context.Background(), r, nil)
 	cl, err := dsp.NewClient(nil)
@@ -159,7 +158,7 @@ func Test_ReadDispatcher_ClientClosed_ClientNotExist_ReaderNotClosed(t *testing.
 
 func Test_ReadDispatcher_InvalidBufferSize(t *testing.T) {
 	var p = make([]byte, 10)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 
 	dsp := Readers.NewReadDispatcher(context.Background(), r, &Readers.ReadDispatcherOptions{
 		BuffersCount:         0,
@@ -178,7 +177,7 @@ func Test_ReadDispatcher_InvalidBufferSize(t *testing.T) {
 
 func Test_ReadDispatcher_OutOfBuffer(t *testing.T) {
 	var p = make([]byte, 5)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 
 	dsp := Readers.NewReadDispatcher(context.Background(), r, nil)
 	cl, err := dsp.NewClient(nil)
@@ -201,7 +200,7 @@ func Test_ReadDispatcher_OutOfBuffer(t *testing.T) {
 
 func Test_ReadDispatcher_ReadContext(t *testing.T) {
 	var p = make([]byte, 5)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 	ctx, cf := context.WithTimeout(context.Background(), time.Second)
 	defer cf()
 
@@ -223,7 +222,7 @@ func Test_ReadDispatcher_ReadContext(t *testing.T) {
 
 func Test_ReadDispatcher_ClientAfterRead(t *testing.T) {
 	var p = make([]byte, 5)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 
 	dsp := Readers.NewReadDispatcher(context.Background(), r, nil)
 	cl, err := dsp.NewClient(nil)
@@ -237,7 +236,7 @@ func Test_ReadDispatcher_ClientAfterRead(t *testing.T) {
 
 func Test_ReadDispatcher_ScanContext(t *testing.T) {
 	//var p = make([]byte, 5)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 	ctx, cf := context.WithTimeout(context.Background(), 6*time.Millisecond)
 	defer cf()
 
@@ -248,7 +247,7 @@ func Test_ReadDispatcher_ScanContext(t *testing.T) {
 
 func Test_ReadDispatcher_ScanDestroy(t *testing.T) {
 	var p = make([]byte, 5)
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 	dsp := Readers.NewReadDispatcher(context.Background(), r, nil)
 	cl, err := dsp.NewClient(nil)
 	assert.NoError(t, err)
@@ -263,7 +262,7 @@ func Test_ReadDispatcher_ScanDestroy(t *testing.T) {
 }
 
 func Test_ReadDispatcher_Async_OK(t *testing.T) {
-	r := ioutil.NopCloser(strings.NewReader("01234567890123456789"))
+	r := io.NopCloser(strings.NewReader("01234567890123456789"))
 	dsp := Readers.NewReadDispatcher(context.Background(), r, nil)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
